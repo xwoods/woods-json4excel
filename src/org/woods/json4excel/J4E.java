@@ -1,5 +1,9 @@
 package org.woods.json4excel;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
@@ -19,6 +23,7 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.nutz.castor.Castors;
 import org.nutz.json.Json;
+import org.nutz.json.JsonFormat;
 import org.nutz.lang.Mirror;
 import org.nutz.lang.Strings;
 import org.nutz.log.Log;
@@ -49,27 +54,53 @@ public class J4E {
      * 
      * @return 是否转换并写入成功
      */
-    @SuppressWarnings("unchecked")
+
     public static <T> boolean toExcel(OutputStream out, List<T> dataList, J4EConf j4eConf) {
+        Workbook wb = (j4eConf != null && j4eConf.isUse2007()) ? new XSSFWorkbook()
+                                                              : new HSSFWorkbook();
+        return toExcel(wb, out, dataList, j4eConf);
+    }
+
+    public static <T> boolean toExce(File excel, List<T> dataList, J4EConf j4eConf) {
+        Workbook wb = (j4eConf != null && j4eConf.isUse2007()) ? new XSSFWorkbook()
+                                                              : new HSSFWorkbook();
+        try {
+            return toExcel(wb, new FileOutputStream(excel), dataList, j4eConf);
+        }
+        catch (FileNotFoundException e) {
+            log.error(e);
+            return false;
+        }
+    }
+
+    public static <T> boolean appendExcel(File excel, List<T> dataList, J4EConf j4eConf) {
+        try {
+            Workbook wb = loadExcel(new FileInputStream(excel));
+            if (wb == null) {
+                wb = (j4eConf != null && j4eConf.isUse2007()) ? new XSSFWorkbook()
+                                                             : new HSSFWorkbook();
+            }
+            return toExcel(wb, new FileOutputStream(excel), dataList, j4eConf);
+        }
+        catch (Exception e) {
+            log.error(e);
+            return false;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> boolean toExcel(Workbook wb,
+                                      OutputStream out,
+                                      List<T> dataList,
+                                      J4EConf j4eConf) {
         if (dataList == null || dataList.size() == 0) {
             log.warn("datalist is empty! can't convert to excel");
             return false;
         }
         Class<T> objClz = (Class<T>) dataList.get(0).getClass();
         Mirror<T> mc = Mirror.me(objClz);
-        if (null == j4eConf) {
-            j4eConf = J4EConf.from(objClz);
-        }
-        if (Strings.isBlank(j4eConf.getSheetName())) {
-            String sheetName = objClz.getSimpleName();
-            J4EName cName = objClz.getAnnotation(J4EName.class);
-            if (cName != null && !Strings.isBlank(cName.value())) {
-                sheetName = cName.value();
-            }
-            j4eConf.setSheetName(sheetName);
-        }
+        j4eConf = checkJ4EConf(j4eConf, objClz);
         // FIXME 暂时是生成一个新的excel, 以后可以向现有的excel文件中写入
-        Workbook wb = j4eConf.isUse2007() ? new XSSFWorkbook() : new HSSFWorkbook();
         Sheet sheet = wb.createSheet(j4eConf.getSheetName());
         // 判断column的field是否都在T中
         for (J4EColumn jcol : j4eConf.getColumns()) {
@@ -100,6 +131,9 @@ public class J4E {
         }
         // 写入row
         for (T dval : dataList) {
+            if (log.isDebugEnabled()) {
+                log.debugf("add Row : %s", Json.toJson(dval, JsonFormat.compact()));
+            }
             Row row = sheet.createRow(rnum++);
             cindex = 0;
             for (J4EColumn jcol : j4eConf.getColumns()) {
@@ -113,6 +147,21 @@ public class J4E {
             }
         }
         return saveExcel(out, wb);
+    }
+
+    private static <T> J4EConf checkJ4EConf(J4EConf j4eConf, Class<T> objClz) {
+        if (null == j4eConf) {
+            j4eConf = J4EConf.from(objClz);
+        }
+        if (Strings.isBlank(j4eConf.getSheetName())) {
+            String sheetName = objClz.getSimpleName();
+            J4EName cName = objClz.getAnnotation(J4EName.class);
+            if (cName != null && !Strings.isBlank(cName.value())) {
+                sheetName = cName.value();
+            }
+            j4eConf.setSheetName(sheetName);
+        }
+        return j4eConf;
     }
 
     /**
@@ -329,4 +378,5 @@ public class J4E {
         }
         return false;
     }
+
 }
