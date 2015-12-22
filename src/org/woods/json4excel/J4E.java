@@ -16,6 +16,7 @@ import java.util.Map;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -26,6 +27,7 @@ import org.nutz.json.Json;
 import org.nutz.json.JsonFormat;
 import org.nutz.lang.Mirror;
 import org.nutz.lang.Strings;
+import org.nutz.lang.Times;
 import org.nutz.log.Log;
 import org.nutz.log.Logs;
 import org.woods.json4excel.annotation.J4EName;
@@ -57,13 +59,13 @@ public class J4E {
 
     public static <T> boolean toExcel(OutputStream out, List<T> dataList, J4EConf j4eConf) {
         Workbook wb = (j4eConf != null && j4eConf.isUse2007()) ? new XSSFWorkbook()
-                                                              : new HSSFWorkbook();
+                                                               : new HSSFWorkbook();
         return toExcel(wb, out, dataList, j4eConf);
     }
 
     public static <T> boolean toExce(File excel, List<T> dataList, J4EConf j4eConf) {
         Workbook wb = (j4eConf != null && j4eConf.isUse2007()) ? new XSSFWorkbook()
-                                                              : new HSSFWorkbook();
+                                                               : new HSSFWorkbook();
         try {
             return toExcel(wb, new FileOutputStream(excel), dataList, j4eConf);
         }
@@ -78,7 +80,7 @@ public class J4E {
             Workbook wb = loadExcel(new FileInputStream(excel));
             if (wb == null) {
                 wb = (j4eConf != null && j4eConf.isUse2007()) ? new XSSFWorkbook()
-                                                             : new HSSFWorkbook();
+                                                              : new HSSFWorkbook();
             }
             return toExcel(wb, new FileOutputStream(excel), dataList, j4eConf);
         }
@@ -126,7 +128,7 @@ public class J4E {
                 Cell c = rhead.createCell(cindex++);
                 c.setCellType(Cell.CELL_TYPE_STRING);
                 c.setCellValue(Strings.isBlank(jcol.getColumnName()) ? jcol.getFieldName()
-                                                                    : jcol.getColumnName());
+                                                                     : jcol.getColumnName());
             }
         }
         // 写入row
@@ -285,14 +287,18 @@ public class J4E {
                                            row.getRowNum(),
                                            jcol.getColumnIndex()));
                 }
-                String cVal = (null == cell ? "" : cellValue(cell, jcol.getColumnType()));
+                String cVal = (null == cell ? "" : cellValue(cell, jcol));
                 mc.setValue(rVal, jfield, cVal);
             }
         }
         return rVal;
     }
 
-    private static String cellValue(Cell c, J4EColumnType colType) {
+    public static String cellValue(Cell c, J4EColumn jcol) {
+        J4EColumnType colType = null;
+        if (jcol != null) {
+            colType = jcol.getColumnType();
+        }
         if (null == colType) {
             colType = J4EColumnType.STRING;
         }
@@ -300,6 +306,9 @@ public class J4E {
             int cType = c.getCellType();
             switch (cType) {
             case Cell.CELL_TYPE_NUMERIC: // 数字
+                if (DateUtil.isCellDateFormatted(c)) {
+                    return Times.sDT(c.getDateCellValue());
+                }
                 if (J4EColumnType.STRING == colType) {
                     // 按照整形来拿, 防止2B的科学计数法
                     DecimalFormat df = new DecimalFormat("0");
@@ -317,7 +326,7 @@ public class J4E {
             case Cell.CELL_TYPE_BOOLEAN: // boolean
                 return String.valueOf(c.getBooleanCellValue());
             case Cell.CELL_TYPE_FORMULA:
-                return String.valueOf(c.getNumericCellValue());
+                return String.valueOf(c.getStringCellValue());
             default:
                 return c.getStringCellValue();
             }
@@ -355,8 +364,8 @@ public class J4E {
             // }
             // }
         }
-        catch (Exception e3) {
-            log.error("can't load inputstream for a workbook", e3);
+        catch (Exception e) {
+            log.error("can't load inputstream for a workbook", e);
         }
         return wb;
     }
