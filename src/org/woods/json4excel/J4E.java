@@ -184,18 +184,13 @@ public class J4E {
         Workbook wb = loadExcel(in);
         // 读取sheet
         Sheet sheet = null;
-        if (null != j4eConf.getSheetIndex()) {
-            sheet = wb.getSheetAt(j4eConf.getSheetIndex());
-        }
-        if (null == sheet) {
-            if (Strings.isBlank(j4eConf.getSheetName())) {
-                String sheetName = objClz.getSimpleName();
-                J4EName cName = objClz.getAnnotation(J4EName.class);
-                if (cName != null && !Strings.isBlank(cName.value())) {
-                    sheetName = cName.value();
-                }
-                j4eConf.setSheetName(sheetName);
+        if (Strings.isBlank(j4eConf.getSheetName())) {
+            String sheetName = objClz.getSimpleName();
+            J4EName cName = objClz.getAnnotation(J4EName.class);
+            if (cName != null && !Strings.isBlank(cName.value())) {
+                sheetName = cName.value();
             }
+            j4eConf.setSheetName(sheetName);
             // sheetName 可以是多个
             String[] snArray = j4eConf.getSheetName().split("\\|");
             for (String sn : snArray) {
@@ -205,6 +200,9 @@ public class J4E {
                     break;
                 }
             }
+        }
+        if (null == sheet) {
+            sheet = wb.getSheetAt(j4eConf.getSheetIndex());
         }
         if (null == sheet) {
             log.errorf("excel not has sheet at [%d] or sheetName is [%s]",
@@ -220,57 +218,66 @@ public class J4E {
         Mirror<T> mc = Mirror.me(objClz);
         List<T> dataList = j4eConf.isNoReturn() ? null : new ArrayList<T>();
         Iterator<Row> rlist = sheet.rowIterator();
+        int passRow = j4eConf.getPassRow();
+        int passColumn = j4eConf.getPassColumn();
+        int currRow = 0;
+        int currColumn = 0;
         boolean firstRow = true;
         while (rlist.hasNext()) {
             Row row = rlist.next();
-            if (firstRow) {
-                // 确定column的index
-                Iterator<Cell> clist = row.cellIterator();
-                int cindex = 0;
-                Map<String, Integer> headIndexMap = new HashMap<String, Integer>();
-                while (clist.hasNext()) {
-                    Cell chead = clist.next();
-                    headIndexMap.put(cellValue(chead, null), cindex++);
-                }
-                for (J4EColumn jcol : j4eConf.getColumns()) {
-                    if (null != headIndexMap.get(jcol.getColumnName())) {
-                        // by columnName
-                        jcol.setColumnIndex(headIndexMap.get(jcol.getColumnName()));
-                    } else if (null != headIndexMap.get(jcol.getFieldName())) {
-                        // by field
-                        jcol.setColumnIndex(headIndexMap.get(jcol.getFieldName()));
-                    } else if (null != jcol.getColumnIndex() && jcol.getColumnIndex() >= 0) {
-                        // 已经设置过的index ??? 这个提醒一下
-                        log.warnf("J4EColumn has already set index[%d], but not sure It is right",
-                                  jcol.getColumnIndex());
-                    } else {
-                        jcol.setColumnIndex(-1);
+            if (currRow >= passRow) {
+                currColumn = 0;
+                if (firstRow) {
+                    // TODO passColumn的测试
+                    // 确定column的index
+                    Iterator<Cell> clist = row.cellIterator();
+                    int cindex = 0;
+                    Map<String, Integer> headIndexMap = new HashMap<String, Integer>();
+                    while (clist.hasNext()) {
+                        Cell chead = clist.next();
+                        headIndexMap.put(cellValue(chead, null), cindex++);
                     }
-                    // 查找field
-                    if (jcol.getColumnIndex() != null && jcol.getColumnIndex() >= 0) {
-                        try {
-                            Field cfield = mc.getField(jcol.getFieldName());
-                            jcol.setField(cfield);
+                    for (J4EColumn jcol : j4eConf.getColumns()) {
+                        if (null != headIndexMap.get(jcol.getColumnName())) {
+                            // by columnName
+                            jcol.setColumnIndex(headIndexMap.get(jcol.getColumnName()));
+                        } else if (null != headIndexMap.get(jcol.getFieldName())) {
+                            // by field
+                            jcol.setColumnIndex(headIndexMap.get(jcol.getFieldName()));
+                        } else if (null != jcol.getColumnIndex() && jcol.getColumnIndex() >= 0) {
+                            // 已经设置过的index ??? 这个提醒一下
+                            log.warnf("J4EColumn has already set index[%d], but not sure It is right",
+                                      jcol.getColumnIndex());
+                        } else {
+                            jcol.setColumnIndex(-1);
                         }
-                        catch (NoSuchFieldException e) {
-                            log.warnf("can't find Field[%s] in Class[%s]",
-                                      jcol.getFieldName(),
-                                      objClz.getName());
+                        // 查找field
+                        if (jcol.getColumnIndex() != null && jcol.getColumnIndex() >= 0) {
+                            try {
+                                Field cfield = mc.getField(jcol.getFieldName());
+                                jcol.setField(cfield);
+                            }
+                            catch (NoSuchFieldException e) {
+                                log.warnf("can't find Field[%s] in Class[%s]",
+                                          jcol.getFieldName(),
+                                          objClz.getName());
+                            }
                         }
                     }
+                    log.debugf("J4EConf-Columns : \n%s", Json.toJson(j4eConf.getColumns()));
+                    firstRow = false;
+                    continue;
                 }
-                log.debugf("J4EConf-Columns : \n%s", Json.toJson(j4eConf.getColumns()));
-                firstRow = false;
-                continue;
+                // 从第二行开始读数据
+                T rVal = rowValue(row, j4eConf, mc);
+                if (null != j4eConf.getEachPrepare()) {
+                    j4eConf.getEachPrepare().doEach(rVal);
+                }
+                if (!j4eConf.isNoReturn()) {
+                    dataList.add(rVal);
+                }
             }
-            // 从第二行开始读数据
-            T rVal = rowValue(row, j4eConf, mc);
-            if (null != j4eConf.getEachPrepare()) {
-                j4eConf.getEachPrepare().doEach(rVal);
-            }
-            if (!j4eConf.isNoReturn()) {
-                dataList.add(rVal);
-            }
+            currRow++;
         }
         return dataList;
     }
@@ -322,13 +329,13 @@ public class J4E {
                 }
                 // 按照字符拿
             case Cell.CELL_TYPE_STRING: // 字符串
-                return c.getStringCellValue();
+                return Strings.trim(c.getStringCellValue());
             case Cell.CELL_TYPE_BOOLEAN: // boolean
                 return String.valueOf(c.getBooleanCellValue());
             case Cell.CELL_TYPE_FORMULA:
-                return String.valueOf(c.getStringCellValue());
+                return Strings.trim(String.valueOf(c.getStringCellValue()));
             default:
-                return c.getStringCellValue();
+                return Strings.trim(c.getStringCellValue());
             }
         }
         catch (Exception e) {
@@ -349,20 +356,20 @@ public class J4E {
     public static Workbook loadExcel(InputStream in) {
         Workbook wb = null;
         try {
-            wb = WorkbookFactory.create(in);
-            // try {
             // wb = WorkbookFactory.create(in);
-            // }
-            // catch (Exception e1) {
-            // // 因为HSSF与XSSF的不同, 导致返回的sheet对象能有不同, 暂时先使用HSSF
-            // // FIXME 稍后实现两种, XSSF使用更少的内存, 但仅仅能访问xlsx
-            // try {
-            // wb = new HSSFWorkbook(in);
-            // }
-            // catch (Exception e2) {
-            // wb = new XSSFWorkbook(in);
-            // }
-            // }
+            try {
+                wb = WorkbookFactory.create(in);
+            }
+            catch (Exception e1) {
+                // 因为HSSF与XSSF的不同, 导致返回的sheet对象能有不同, 暂时先使用HSSF
+                // FIXME 稍后实现两种, XSSF使用更少的内存, 但仅仅能访问xlsx
+                try {
+                    wb = new HSSFWorkbook(in);
+                }
+                catch (Exception e2) {
+                    wb = new XSSFWorkbook(in);
+                }
+            }
         }
         catch (Exception e) {
             log.error("can't load inputstream for a workbook", e);

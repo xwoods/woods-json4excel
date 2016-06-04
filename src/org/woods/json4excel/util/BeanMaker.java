@@ -24,6 +24,10 @@ public class BeanMaker {
     }
 
     public static String fromExcel(InputStream in, String sheetName) {
+        return fromExcel(in, sheetName, 0, 0);
+    }
+
+    public static String fromExcel(InputStream in, String sheetName, int passRow, int passColumn) {
         Workbook wb = J4E.loadExcel(in);
         Sheet sheet = null;
         if (Strings.isBlank(sheetName)) {
@@ -33,15 +37,23 @@ public class BeanMaker {
         }
         StringBuilder sb = new StringBuilder();
         Iterator<Row> rlist = sheet.rowIterator();
-        if (rlist.hasNext()) {
+        int currRow = 0;
+        while (rlist.hasNext()) {
             Row row = rlist.next();
-            Iterator<Cell> clist = row.cellIterator();
-            while (clist.hasNext()) {
-                Cell chead = clist.next();
-                String h = J4E.cellValue(chead, null);
-                sb.append("@J4EName(\"").append(h).append("\")").append("\n");
-                sb.append("public String ").append(h).append(";").append("\n\n");
+            if (currRow >= passRow) {
+                Iterator<Cell> clist = row.cellIterator();
+                while (clist.hasNext()) {
+                    Cell chead = clist.next();
+                    String h = J4E.cellValue(chead, null);
+                    sb.append("@J4EName(\"").append(h).append("\")").append("\n");
+                    sb.append("public String ")
+                      .append(h.replace(" ", "").replace("/", ""))
+                      .append(";")
+                      .append("\n\n");
+                }
+                break;
             }
+            currRow++;
         }
         try {
             wb.close();

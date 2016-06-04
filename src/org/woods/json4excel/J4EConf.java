@@ -18,10 +18,16 @@ import org.woods.json4excel.annotation.J4EName;
 public class J4EConf {
 
     // excel中的sheet的index, 从1开始
-    private Integer sheetIndex;
+    private int sheetIndex;
 
     // excel中sheet的名字
     private String sheetName;
+
+    // 跳过的列
+    private int passColumn;
+
+    // 跳过的行
+    private int passRow;
 
     // sheet中对应的列
     private List<J4EColumn> columns;
@@ -59,14 +65,15 @@ public class J4EConf {
 
     public J4EConf setEachPrepare(J4EEachRow eachPrepare) {
         this.eachPrepare = eachPrepare;
+        this.noReturn = true;
         return this;
     }
 
-    public Integer getSheetIndex() {
+    public int getSheetIndex() {
         return sheetIndex;
     }
 
-    public J4EConf setSheetIndex(Integer sheetIndex) {
+    public J4EConf setSheetIndex(int sheetIndex) {
         this.sheetIndex = sheetIndex;
         return this;
     }
@@ -86,6 +93,24 @@ public class J4EConf {
 
     public J4EConf setColumns(List<J4EColumn> columns) {
         this.columns = columns;
+        return this;
+    }
+
+    public int getPassColumn() {
+        return passColumn;
+    }
+
+    public J4EConf setPassColumn(int passColumn) {
+        this.passColumn = passColumn;
+        return this;
+    }
+
+    public int getPassRow() {
+        return passRow;
+    }
+
+    public J4EConf setPassRow(int passRow) {
+        this.passRow = passRow;
         return this;
     }
 
