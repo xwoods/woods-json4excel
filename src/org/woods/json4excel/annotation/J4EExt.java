@@ -13,4 +13,9 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
-public @interface J4EExt {}
+public @interface J4EExt {
+
+    int passRow() default 0;;
+
+    int passColumn() default 0;;
+}

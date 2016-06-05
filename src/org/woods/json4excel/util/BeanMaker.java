@@ -47,7 +47,7 @@ public class BeanMaker {
                     String h = J4E.cellValue(chead, null);
                     sb.append("@J4EName(\"").append(h).append("\")").append("\n");
                     sb.append("public String ")
-                      .append(h.replace(" ", "").replace("/", ""))
+                      .append(h.replace(" ", "").replace("/", "").replace("(", "").replace(")", ""))
                       .append(";")
                       .append("\n\n");
                 }

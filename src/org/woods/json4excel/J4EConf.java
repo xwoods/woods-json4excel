@@ -12,6 +12,7 @@ import org.nutz.json.Json;
 import org.nutz.lang.Mirror;
 import org.nutz.lang.Strings;
 import org.nutz.lang.util.Disks;
+import org.woods.json4excel.annotation.J4EExt;
 import org.woods.json4excel.annotation.J4EName;
 
 @SuppressWarnings("rawtypes")
@@ -118,6 +119,12 @@ public class J4EConf {
 
     public static J4EConf from(Class<?> clz) {
         J4EConf jc = new J4EConf();
+        // Ext
+        J4EExt ecnf = clz.getAnnotation(J4EExt.class);
+        if (ecnf != null) {
+            jc.passRow = ecnf.passRow();
+            jc.passColumn = ecnf.passColumn();
+        }
         // sheet
         String sheetName = clz.getSimpleName();
         J4EName cName = clz.getAnnotation(J4EName.class);
