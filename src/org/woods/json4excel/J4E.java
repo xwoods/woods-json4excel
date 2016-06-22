@@ -231,7 +231,7 @@ public class J4E {
                             log.warnf("J4EColumn has already set index[%d], but not sure It is right",
                                       jcol.getColumnIndex());
                         } else {
-                            jcol.setColumnIndex(-1);
+                            jcol.setColumnIndex(null);
                         }
                         // 查找field
                         if (jcol.getColumnIndex() != null && jcol.getColumnIndex() >= 0) {
