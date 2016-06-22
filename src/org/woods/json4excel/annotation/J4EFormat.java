@@ -7,4 +7,19 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD})
-public @interface J4EFormat {}
+public @interface J4EFormat {
+
+    /**
+     * 转换为大写
+     * 
+     * @return
+     */
+    boolean toUpperCase() default false;
+
+    /**
+     * 转换为小写
+     * 
+     * @return
+     */
+    boolean toLowerCase() default false;
+}

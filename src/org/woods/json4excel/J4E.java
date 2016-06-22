@@ -31,6 +31,7 @@ import org.nutz.lang.Times;
 import org.nutz.log.Log;
 import org.nutz.log.Logs;
 import org.woods.json4excel.annotation.J4EDateFormat;
+import org.woods.json4excel.annotation.J4EFormat;
 import org.woods.json4excel.annotation.J4EName;
 
 /**
@@ -341,19 +342,32 @@ public class J4E {
                 // 按照字符拿
             case Cell.CELL_TYPE_STRING: // 字符串
                 String strResult = Strings.trim(c.getStringCellValue());
-                if (jcol != null && jcol.getDtFormat() != null) {
-                    try {
-                        strResult = Times.format(jcol.getDtFormat()[1],
-                                                 Times.parse(jcol.getDtFormat()[0], strResult));
+                if (jcol != null) {
+                    // 日期转换
+                    if (jcol.getDtFormat() != null) {
+                        try {
+                            strResult = Times.format(jcol.getDtFormat()[1],
+                                                     Times.parse(jcol.getDtFormat()[0], strResult));
+                        }
+                        catch (Exception e) {
+                            log.error(String.format("cell [%d, %d] datetime formate err, value %s [%s-%s]",
+                                                    c.getRowIndex(),
+                                                    c.getColumnIndex(),
+                                                    strResult,
+                                                    jcol.getDtFormat()[0],
+                                                    jcol.getDtFormat()[1],
+                                                    e));
+                        }
                     }
-                    catch (Exception e) {
-                        log.error(String.format("cell [%d, %d] datetime formate err, value %s [%s-%s]",
-                                                c.getRowIndex(),
-                                                c.getColumnIndex(),
-                                                strResult,
-                                                jcol.getDtFormat()[0],
-                                                jcol.getDtFormat()[1],
-                                                e));
+                    // 文字转换
+                    J4EFormat strFormat = jcol.getField().getAnnotation(J4EFormat.class);
+                    if (strFormat != null) {
+                        if (strFormat.toLowerCase()) {
+                            strResult = strResult.toLowerCase();
+                        }
+                        if (strFormat.toUpperCase()) {
+                            strResult = strResult.toUpperCase();
+                        }
                     }
                 }
                 return strResult;
