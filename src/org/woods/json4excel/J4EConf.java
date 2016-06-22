@@ -126,7 +126,7 @@ public class J4EConf {
             jc.passColumn = ecnf.passColumn();
         }
         // sheet
-        String sheetName = clz.getSimpleName();
+        String sheetName = null;
         J4EName cName = clz.getAnnotation(J4EName.class);
         if (cName != null && !Strings.isBlank(cName.value())) {
             sheetName = cName.value();

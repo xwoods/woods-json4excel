@@ -22,6 +22,9 @@ public class J4EColumn {
     @JsonField(ignore = true)
     private Field field;
 
+    // 时间日期转换
+    private String[] dtFormat;
+
     void setField(Field field) {
         this.field = field;
     }
@@ -60,6 +63,14 @@ public class J4EColumn {
 
     public void setColumnType(J4EColumnType columnType) {
         this.columnType = columnType;
+    }
+
+    public String[] getDtFormat() {
+        return dtFormat;
+    }
+
+    public void setDtFormat(String[] dtFormat) {
+        this.dtFormat = dtFormat;
     }
 
 }

@@ -30,6 +30,7 @@ import org.nutz.lang.Strings;
 import org.nutz.lang.Times;
 import org.nutz.log.Log;
 import org.nutz.log.Logs;
+import org.woods.json4excel.annotation.J4EDateFormat;
 import org.woods.json4excel.annotation.J4EName;
 
 /**
@@ -182,39 +183,19 @@ public class J4E {
             j4eConf = J4EConf.from(objClz);
         }
         Workbook wb = loadExcel(in);
-        // 读取sheet
-        Sheet sheet = null;
-        if (Strings.isBlank(j4eConf.getSheetName())) {
-            String sheetName = objClz.getSimpleName();
-            J4EName cName = objClz.getAnnotation(J4EName.class);
-            if (cName != null && !Strings.isBlank(cName.value())) {
-                sheetName = cName.value();
-            }
-            j4eConf.setSheetName(sheetName);
-            // sheetName 可以是多个
-            String[] snArray = j4eConf.getSheetName().split("\\|");
-            for (String sn : snArray) {
-                sheet = wb.getSheet(sn);
-                if (sheet != null) {
-                    log.infof("find sheet by name [%s]", sn);
-                    break;
-                }
-            }
-        }
-        if (null == sheet) {
-            sheet = wb.getSheetAt(j4eConf.getSheetIndex());
-        }
-        if (null == sheet) {
-            log.errorf("excel not has sheet at [%d] or sheetName is [%s]",
-                       j4eConf.getSheetIndex(),
-                       j4eConf.getSheetName());
+        Sheet sheet = getSheet(wb, objClz, j4eConf);
+        if (sheet == null) {
+            log.error("Not Find Sheet");
             return null;
         }
-        return fromSheet(sheet, objClz, j4eConf);
+        return fromSheet(sheet, objClz, j4eConf, false);
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T> List<T> fromSheet(Sheet sheet, Class<T> objClz, J4EConf j4eConf) {
+    @SuppressWarnings("unused")
+    public static <T> List<T> fromSheet(Sheet sheet,
+                                        Class<T> objClz,
+                                        J4EConf j4eConf,
+                                        boolean onlyHeader) {
         Mirror<T> mc = Mirror.me(objClz);
         List<T> dataList = j4eConf.isNoReturn() ? null : new ArrayList<T>();
         Iterator<Row> rlist = sheet.rowIterator();
@@ -256,6 +237,15 @@ public class J4E {
                             try {
                                 Field cfield = mc.getField(jcol.getFieldName());
                                 jcol.setField(cfield);
+                                // 查看是否有特殊的格式需求
+                                J4EDateFormat dFormat = cfield.getAnnotation(J4EDateFormat.class);
+                                if (dFormat != null) {
+                                    String f = dFormat.from();
+                                    String t = dFormat.to();
+                                    if (!Strings.isBlank(f) && !Strings.isBlank(t)) {
+                                        jcol.setDtFormat(new String[]{f, t});
+                                    }
+                                }
                             }
                             catch (NoSuchFieldException e) {
                                 log.warnf("can't find Field[%s] in Class[%s]",
@@ -266,6 +256,9 @@ public class J4E {
                     }
                     log.debugf("J4EConf-Columns : \n%s", Json.toJson(j4eConf.getColumns()));
                     firstRow = false;
+                    if (onlyHeader) {
+                        break;
+                    }
                     continue;
                 }
                 // 从第二行开始读数据
@@ -282,7 +275,25 @@ public class J4E {
         return dataList;
     }
 
-    private static <T> T rowValue(Row row, J4EConf j4eConf, Mirror<T> mc) {
+    public static <T> boolean matchExcel(InputStream in, Class<T> objClz) {
+        J4EConf j4eConf = J4EConf.from(objClz);
+        Workbook wb = loadExcel(in);
+        Sheet sheet = getSheet(wb, objClz, j4eConf);
+        // 解析header
+        fromSheet(sheet, objClz, j4eConf, true);
+        // 判断header是否都找到了
+        int jcnum = 0;
+        int jcfind = 0;
+        for (J4EColumn jcol : j4eConf.getColumns()) {
+            if (jcol.getColumnIndex() != null) {
+                jcfind++;
+            }
+            jcnum++;
+        }
+        return jcfind == jcnum;
+    }
+
+    public static <T> T rowValue(Row row, J4EConf j4eConf, Mirror<T> mc) {
         // FIXME 必须有标准构造函数
         T rVal = mc.born();
         for (J4EColumn jcol : j4eConf.getColumns()) {
@@ -329,7 +340,23 @@ public class J4E {
                 }
                 // 按照字符拿
             case Cell.CELL_TYPE_STRING: // 字符串
-                return Strings.trim(c.getStringCellValue());
+                String strResult = Strings.trim(c.getStringCellValue());
+                if (jcol != null && jcol.getDtFormat() != null) {
+                    try {
+                        strResult = Times.format(jcol.getDtFormat()[1],
+                                                 Times.parse(jcol.getDtFormat()[0], strResult));
+                    }
+                    catch (Exception e) {
+                        log.error(String.format("cell [%d, %d] datetime formate err, value %s [%s-%s]",
+                                                c.getRowIndex(),
+                                                c.getColumnIndex(),
+                                                strResult,
+                                                jcol.getDtFormat()[0],
+                                                jcol.getDtFormat()[1],
+                                                e));
+                    }
+                }
+                return strResult;
             case Cell.CELL_TYPE_BOOLEAN: // boolean
                 return String.valueOf(c.getBooleanCellValue());
             case Cell.CELL_TYPE_FORMULA:
@@ -347,6 +374,31 @@ public class J4E {
         }
     }
 
+    public static Sheet getSheet(Workbook wb, Class<?> objClz, J4EConf j4eConf) {
+        // 读取sheet
+        Sheet sheet = null;
+        if (!Strings.isBlank(j4eConf.getSheetName())) {
+            // sheetName 可以是多个
+            String[] snArray = j4eConf.getSheetName().split("\\|");
+            for (String sn : snArray) {
+                sheet = wb.getSheet(sn);
+                if (sheet != null) {
+                    log.infof("find sheet by name [%s]", sn);
+                    break;
+                }
+            }
+        }
+        if (null == sheet) {
+            sheet = wb.getSheetAt(j4eConf.getSheetIndex());
+        }
+        if (null == sheet) {
+            log.errorf("excel not has sheet at [%d] or sheetName is [%s]",
+                       j4eConf.getSheetIndex(),
+                       j4eConf.getSheetName());
+        }
+        return sheet;
+    }
+
     /**
      * 读取excel文件, 返回wb对象, 如果读取发生错误, 返回null
      * 
@@ -356,7 +408,6 @@ public class J4E {
     public static Workbook loadExcel(InputStream in) {
         Workbook wb = null;
         try {
-            // wb = WorkbookFactory.create(in);
             try {
                 wb = WorkbookFactory.create(in);
             }
