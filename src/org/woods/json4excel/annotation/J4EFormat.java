@@ -14,12 +14,12 @@ public @interface J4EFormat {
      * 
      * @return
      */
-    boolean toUpperCase() default false;
+    boolean UpperCase() default false;
 
     /**
      * 转换为小写
      * 
      * @return
      */
-    boolean toLowerCase() default false;
+    boolean LowerCase() default false;
 }

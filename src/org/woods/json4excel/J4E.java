@@ -342,7 +342,7 @@ public class J4E {
                 // 按照字符拿
             case Cell.CELL_TYPE_STRING: // 字符串
                 String strResult = Strings.trim(c.getStringCellValue());
-                if (jcol != null) {
+                if (!Strings.isBlank(strResult) && jcol != null) {
                     // 日期转换
                     if (jcol.getDtFormat() != null) {
                         try {
@@ -362,10 +362,10 @@ public class J4E {
                     // 文字转换
                     J4EFormat strFormat = jcol.getField().getAnnotation(J4EFormat.class);
                     if (strFormat != null) {
-                        if (strFormat.toLowerCase()) {
+                        if (strFormat.LowerCase()) {
                             strResult = strResult.toLowerCase();
                         }
-                        if (strFormat.toUpperCase()) {
+                        if (strFormat.UpperCase()) {
                             strResult = strResult.toUpperCase();
                         }
                     }
