@@ -18,6 +18,8 @@ public class J4EColumn {
     // 列按照什么类型读取
     private J4EColumnType columnType;
 
+    private int precision;
+
     // 真实的field
     @JsonField(ignore = true)
     private Field field;
@@ -71,6 +73,14 @@ public class J4EColumn {
 
     public void setDtFormat(String[] dtFormat) {
         this.dtFormat = dtFormat;
+    }
+
+    public int getPrecision() {
+        return precision;
+    }
+
+    public void setPrecision(int precision) {
+        this.precision = precision;
     }
 
 }

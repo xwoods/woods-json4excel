@@ -334,7 +334,8 @@ public class J4E {
                     return df.format(c.getNumericCellValue());
                 } else if (J4EColumnType.NUMERIC == colType) {
                     // 按照double数字拿
-                    DecimalFormat df = new DecimalFormat("0.00");
+                    String fString = "0." + Strings.alignLeft("", jcol.getPrecision(), '0');
+                    DecimalFormat df = new DecimalFormat(fString);
                     return df.format(c.getNumericCellValue());
                 } else {
                     throw new RuntimeException("WTF, CELL_TYPE_NUMERIC is what!");
