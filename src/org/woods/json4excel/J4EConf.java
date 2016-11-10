@@ -12,6 +12,7 @@ import org.nutz.json.Json;
 import org.nutz.lang.Mirror;
 import org.nutz.lang.Strings;
 import org.nutz.lang.util.Disks;
+import org.woods.json4excel.annotation.J4EDefine;
 import org.woods.json4excel.annotation.J4EExt;
 import org.woods.json4excel.annotation.J4EName;
 
@@ -142,6 +143,11 @@ public class J4EConf {
             J4EName fName = cf.getAnnotation(J4EName.class);
             if (fName != null && !Strings.isBlank(fName.value())) {
                 jcol.setColumnName(fName.value());
+            }
+            J4EDefine define = cf.getAnnotation(J4EDefine.class);
+            if (define != null) {
+                jcol.setColumnType(define.type());
+                jcol.setPrecision(define.precision());
             }
             jclist.add(jcol);
         }
