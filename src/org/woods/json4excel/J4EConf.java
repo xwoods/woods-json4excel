@@ -3,6 +3,7 @@ package org.woods.json4excel;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -37,6 +38,11 @@ public class J4EConf {
     // 每一行生成之后, 可以做一定的处理
     private J4EEachRow eachPrepare;
 
+    // 访问每一行，可以修改当前行内容
+    private J4EEachRowModify eachModify;
+
+    private OutputStream modifyOut;
+
     // 不返回结果, 一般跟eachPrepare配合使用
     private boolean noReturn;
 
@@ -67,6 +73,21 @@ public class J4EConf {
 
     public J4EConf setEachPrepare(J4EEachRow eachPrepare) {
         this.eachPrepare = eachPrepare;
+        this.noReturn = true;
+        return this;
+    }
+
+    public J4EEachRowModify getEachModify() {
+        return eachModify;
+    }
+
+    public OutputStream getModifyOutput() {
+        return modifyOut;
+    }
+
+    public J4EConf setEachModify(J4EEachRowModify eachModify, OutputStream out) {
+        this.eachModify = eachModify;
+        this.modifyOut = out;
         this.noReturn = true;
         return this;
     }

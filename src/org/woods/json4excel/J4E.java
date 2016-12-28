@@ -266,12 +266,18 @@ public class J4E {
                 T rVal = rowValue(row, j4eConf, mc);
                 if (null != j4eConf.getEachPrepare()) {
                     j4eConf.getEachPrepare().doEach(rVal);
+                } else if (null != j4eConf.getEachModify()) {
+                    j4eConf.getEachModify().doEach(rVal, row, j4eConf.getColumns());
                 }
                 if (!j4eConf.isNoReturn()) {
                     dataList.add(rVal);
                 }
             }
             currRow++;
+        }
+        // 如果是modify的话
+        if (null != j4eConf.getModifyOutput()) {
+            saveExcel(j4eConf.getModifyOutput(), sheet.getWorkbook());
         }
         return dataList;
     }

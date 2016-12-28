@@ -23,11 +23,15 @@ public class BeanMaker {
         return sb.toString();
     }
 
-    public static String fromExcel(InputStream in, String sheetName) {
-        return fromExcel(in, sheetName, 0, 0);
+    public static String fromExcel(InputStream in, String sheetName, boolean withTable) {
+        return fromExcel(in, sheetName, 0, 0, withTable);
     }
 
-    public static String fromExcel(InputStream in, String sheetName, int passRow, int passColumn) {
+    public static String fromExcel(InputStream in,
+                                   String sheetName,
+                                   int passRow,
+                                   int passColumn,
+                                   boolean withTable) {
         Workbook wb = J4E.loadExcel(in);
         Sheet sheet = null;
         if (Strings.isBlank(sheetName)) {
@@ -46,6 +50,9 @@ public class BeanMaker {
                     Cell chead = clist.next();
                     String h = J4E.cellValue(chead, null);
                     sb.append("@J4EName(\"").append(h).append("\")").append("\n");
+                    if (withTable) {
+                        sb.append("@ColDefine()").append("\n");
+                    }
                     sb.append("public String ")
                       .append(h.replace(" ", "").replace("/", "").replace("(", "").replace(")", ""))
                       .append(";")
